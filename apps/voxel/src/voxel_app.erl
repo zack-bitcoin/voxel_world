@@ -28,7 +28,7 @@ start_http() ->
 		 ]}]),
     %{ok, Port} = application:get_env(amoveo_mining_pool, port),
     {ok, _} = cowboy:start_clear(http,
-				 [{ip, {0,0,0,0}}, {port, 8000}],
+				 [{ip, {0,0,0,0}}, {port, 8095}],
 				 #{env => #{dispatch => Dispatch}}),
     ok.
     
