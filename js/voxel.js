@@ -3,6 +3,7 @@ c.width = document.body.clientWidth;
 c.height = document.body.clientHeight;
 
 var ctx = c.getContext("2d");
+var world_size;
 
 var fps = 30;
 var time = 0;
@@ -58,11 +59,19 @@ function draw_triangles(corners, Tris) {
         };
     };
 };
+function average_point(p1, p2, p3) {
+    return({x: (p1.x + p2.x + p3.x)/3,
+            y: (p1.y + p2.y + p3.y)/3,
+            z: (p1.z + p2.z + p3.z)/3})
+};
 function draw_helper(points2, tris) {
-    var f = function(x) {return(points2[x[0]].z);};
+    var f = function(x) {
+        var p2 = average_point(points2[x[0]],points2[x[1]],points2[x[2]]);
+        var mapSize = world_size * 100;
+        return(distance({x:((mapSize/2)),y:0,z:((mapSize/2))}, p2));
+    };
     var triangles2 = tris.sort(function(t1, t2){return(f(t2) - f(t1))});
     ctx.clearRect(0, 0, c.width, c.height);
-    //draw_background();
     draw_triangles(points2, triangles2);
 };
 function three_to_two(a) {
@@ -75,7 +84,8 @@ function three_to_two(a) {
     return {x: X, y: Y};
 };
 function visible(Z) {
-    var vision = 100000;
+    var vision = 3000;
+    //var vision = world_size * 300;
     return ((Z.z > 0) && (Z.z < vision) && (Z.x > -(vision/2)) && (Z.x < (vision/2)));
 };
 function pdb_maker() {
@@ -119,10 +129,16 @@ function pdb_maker() {
         }
     });
 };
+function pos_mod(A, B) {
+    return((((A % B) + B) % B) - (B/2));
+}
 function in_perspective(point, rotation) {
+    var mapSize = world_size * 100;
     var X = point.x - perspective.x;
+    X = pos_mod(X, mapSize);
     var Y = point.y - perspective.y;
     var Z = point.z - perspective.z;
+    Z = pos_mod(Z, mapSize);
     var point2 = {x: X, y: Y, z: Z};
     var point3 = mul_v_m(point2, rotation);
     return(point3);
@@ -149,13 +165,13 @@ function cube_points(p, s, pdb) {
     var Y = p.y;
     var Z = p.z;
     var L = [p,
-             {x: X+s, y: Y, z: Z},
-             {x: X, y: Y+s, z: Z},
-             {x: X, y: Y, z: Z+s},
-             {x: X+s, y: Y+s, z: Z},
-             {x: X+s, y: Y, z: Z+s},
-             {x: X, y: Y+s, z: Z+s},
-             {x: X+s, y: Y+s, z: Z+s},
+             {x: X+s, y: Y, z: Z, color: p.color},
+             {x: X, y: Y+s, z: Z, color: p.color},
+             {x: X, y: Y, z: Z+s, color: p.color},
+             {x: X+s, y: Y+s, z: Z, color: p.color},
+             {x: X+s, y: Y, z: Z+s, color: p.color},
+             {x: X, y: Y+s, z: Z+s, color: p.color},
+             {x: X+s, y: Y+s, z: Z+s, color: p.color},
             ];
     return(L.map(function(p){return(pdb.add_point(p));}));
 };
@@ -164,38 +180,92 @@ function cp2faces(pts) {
             [pts[5],pts[3],pts[7],pts[6]],
             [pts[0],pts[2],pts[3],pts[6]],
             [pts[4],pts[1],pts[7],pts[5]],
-            //[pts[0],pts[1],pts[3],pts[5]],
-            //[pts[4],pts[2],pts[7],pts[6]],
+            [pts[1],pts[0],pts[5],pts[3]],
+            [pts[2],pts[4],pts[6],pts[7]],
            ])
 };
-function face2triangles(face, color){
-    return([[face[0],face[1],face[2],color],
-            [face[1],face[3],face[2],color]]);
+function face2triangles(face, color,pdb){
+    var c = pdb.db[face[0]].color;
+    return([[face[0],face[1],face[2],c],
+            [face[1],face[3],face[2],c]]);
 };
 
-var pdb = pdb_maker();
+function distance(p1, p2) {
+    var mapSize = world_size * 100;
+    var xd = pos_mod((p1.x - p2.x), mapSize);
+    var yd = (p1.y - p2.y) % mapSize;
+    var zd = pos_mod((p1.z - p2.z), mapSize);
+    return(Math.sqrt((xd*xd)+(yd*yd)+(zd*zd)))
+};
+
 function test(){
-    var faces = cp2faces(cube_points({x:0, y:0, z:0}, 100, pdb));
-    
-    console.log(JSON.stringify(faces.reduce(function(a,x){return(a.concat(face2triangles(x,colors[3])));}, [])))
-    var points = [];
-    var triangles2 = faces.reduce(function(a,x){return(a.concat(face2triangles(x,colors[3])));}, []);
-    console.log(JSON.stringify(triangles2));
     function cron(){
+        var pdb = pdb_maker();
+        //var mapSize = world_size * 50;
+        var cps2 = cps.filter(function(p){
+            return(1000>distance(p,perspective));
+            //return((1000)>distance(p,perspective));
+        });
+        var faces = cps2.reduce(function(a, x){return(cp2faces(cube_points(x, 100, pdb)).concat(a))}, []);
+        //console.log(JSON.stringify(faces));
+    //var faces2 = cp2faces(cube_points({x:0, y:0, z:0}, 100, pdb)).concat(cp2faces(cube_points({x:500, y:0, z:0}, 150, pdb)))
+    
+    //console.log(JSON.stringify(faces.reduce(function(a,x){return(a.concat(face2triangles(x,colors[3])));}, [])))
+        var triangles = faces.reduce(function(a,x){return(a.concat(face2triangles(x,colors[3],pdb)));}, []);
+    //console.log(JSON.stringify(triangles));
         movement([37,38,39,40,65,83]);
         var pdb2 = pdb.perspective();
-        draw_helper(pdb2, triangles2);
+        draw_helper(pdb2, triangles);
         setTimeout(cron, 1000/fps);
     };
     cron();
 };
 
-setTimeout(function(){
+//setTimeout(function(){
+//    test();
+//}, 100);
+
+function update_map(F){
+    variable_public_get(["read"],function(b){
+        var v = atob(b);
+        var c = 0;
+        var a = [];
+        var S = Math.cbrt(v.length);
+        world_size = S;
+        for(var x=0;x<S;x++){
+            a[x] = [];
+            for(var y=0;y<S;y++){
+                a[x][y] = [];
+                for(var z=0;z<S;z++){
+                    a[x][y][z] = v[c].charCodeAt();
+                    c++
+                };
+            };
+        };
+        //console.log(JSON.stringify(a));
+        F(a);
+    });
+};
+var cps = [];
+update_map(function(W){
+    //console.log(JSON.stringify(x));
+    for(var x=0;x<W.length;x++){
+        for(var y=0;y<W.length;y++){
+            for(var z=0;z<W.length;z++){
+                var g = W[x][y][z];
+                if(g == 0){
+                } else {
+                    cps = cps.concat([{x: x*100,
+                                       y: y*100,
+                                       z: z*100,
+                                       color: colors[g]}]);
+                };
+            };
+        };
+    };
     test();
-}, 100);
-
-
-
+    return(0);
+});
 
 
 
@@ -372,7 +442,7 @@ function draw_square(p1, p2, p3, p4, color) {
 //Controller
 
 var controls = {37:false, 38:false, 39:false, 40:false, 65:false, 83:false};
-var perspective = {x:0,y:0,z:-1000,theta:0};
+var perspective = {x:0,y:0,z:0,theta:0};
 var step_size = 20;
 var turn_speed = 0.03;
 function left() {
@@ -449,9 +519,6 @@ function movement(L){
 /*
 // physics
 
-function pos_mod(A, B) {
-    return(((A % B) + B) % B);
-}
 
 */
 

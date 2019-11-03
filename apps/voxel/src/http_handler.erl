@@ -1,6 +1,6 @@
 -module(http_handler).
 
--export([init/3, handle/2, terminate/3, init/2]).
+-export([init/3, handle/2, terminate/3, init/2, doit/1]).
 %example of talking to this handler:
 %httpc:request(post, {"http://127.0.0.1:3010/", [], "application/octet-stream", "echo"}, [], []).
 %curl -i -d '["test"]' http://localhost:3011

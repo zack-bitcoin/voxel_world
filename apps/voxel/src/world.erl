@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 -export([start_link/0,code_change/3,handle_call/3,handle_cast/2,handle_info/2,init/1,terminate/2,
          add/4,delete/3,new/0,compress/0,read/0]).
--define(SIZE, 4).
+-define(SIZE, 30).
 -record(db, {raw, compressed}).
 
 init(ok) -> {ok, #db{}}.
@@ -41,7 +41,7 @@ new_line(E, LN, FN, W, S) ->
     new_line(E+1, LN, FN, [NE|W], S).
 new_element(X, Y, Z, S) ->
     if
-        (Y<(S/4)) -> 1;
+        (Y==(S-2)) -> 1+((X+Z) rem 2);
         true -> 0
     end.
 
