@@ -1,0 +1,20 @@
+{application, voxel,
+ [{description, "An OTP application"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, {voxel_app, []}},
+  {applications,
+   [kernel,
+    stdlib,
+    ssl,
+    cowboy,
+    inets,
+    jiffy,
+    encrypter
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {licenses, []},
+  {links, []}
+ ]}.
