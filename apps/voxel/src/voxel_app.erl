@@ -12,7 +12,12 @@
 start(_StartType, _StartArgs) ->
     inets:start(),
     start_http(),
-    voxel_sup:start_link().
+    R = voxel_sup:start_link(),
+    world:new(),
+    spawn(fun() ->
+                  world_cron()
+          end),
+    R.
 
 stop(_State) ->
     ok.
@@ -31,4 +36,13 @@ start_http() ->
 				 [{ip, {0,0,0,0}}, {port, 8095}],
 				 #{env => #{dispatch => Dispatch}}),
     ok.
+
+world_cron() ->
+    timer:sleep(3000),
+    spawn(fun() ->
+                  world:compress()
+          end),
+    world_cron().
+    
+
     

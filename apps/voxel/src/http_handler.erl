@@ -21,7 +21,7 @@ terminate(_Reason, _Req, _State) -> ok.
 
 doit({read}) ->
     {ok, world:read()};
-doit({delete, X, Y, Z}) ->
+doit({take, X, Y, Z}) ->
     world:delete(X, Y, Z),
     {ok, 0};
 doit({add, X, Y, Z, V}) ->

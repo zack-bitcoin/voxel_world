@@ -4,6 +4,8 @@ c.height = document.body.clientHeight;
 
 var ctx = c.getContext("2d");
 var world_size;
+var vision = 1200;
+var physics_distance = 1500;
 
 var fps = 30;
 var time = 0;
@@ -84,8 +86,6 @@ function three_to_two(a) {
     return {x: X, y: Y};
 };
 function visible(Z) {
-    var vision = 3000;
-    //var vision = world_size * 300;
     return ((Z.z > 0) && (Z.z < vision) && (Z.x > -(vision/2)) && (Z.x < (vision/2)));
 };
 function pdb_maker() {
@@ -198,21 +198,110 @@ function distance(p1, p2) {
     return(Math.sqrt((xd*xd)+(yd*yd)+(zd*zd)))
 };
 
-function test(){
-    function cron(){
-        var pdb = pdb_maker();
-        //var mapSize = world_size * 50;
-        var cps2 = cps.filter(function(p){
-            return(1000>distance(p,perspective));
-            //return((1000)>distance(p,perspective));
-        });
-        var faces = cps2.reduce(function(a, x){return(cp2faces(cube_points(x, 100, pdb)).concat(a))}, []);
-        //console.log(JSON.stringify(faces));
-    //var faces2 = cp2faces(cube_points({x:0, y:0, z:0}, 100, pdb)).concat(cp2faces(cube_points({x:500, y:0, z:0}, 150, pdb)))
+function surrounded(X,Y,Z,W) {
+    //if all 6 spots surrounding a location are non-empty, then we don't need to bother drawing that cube.
+    var x = X;
+    var y = Y;
+    var z = Z;
+    if(x == (-1)){
+        x += W.length;
+    };
+    if(y == (-1)){
+        y += W.length;
+    };
+    if(z == (-1)){
+        z += W.length;
+    };
+    var x2 = x-1;
+    if(x2 == (-1)){
+        x2 += W.length;
+    };
+    var y2 = y-1;
+    if(y2 == (-1)){
+        y2 += W.length;
+    };
+    var z2 = z-1;
+    if(z2 == (-1)){
+        z2 += W.length;
+    };
+    var x3 = x+1;
+    if(x3 >= W.length){
+        x3 -= W.length
+    };
+    var y3 = y+1;
+    if(y3 >= W.length){
+        y3 -= W.length
+    };
+    var z3 = z+1;
+    if(z3 >= W.length){
+        z3 -= W.length
+    };
+    if(W[x3][y][z]==0){
+        return(false);
+    };
+    if(W[x2][y][z]==0){
+        return(false);
+    };
+    if(W[x][y3][z]==0){
+        return(false);
+    };
+    if(W[x][y2][z]==0){
+        return(false);
+    };
+    if(W[x][y][z3]==0){
+        return(false);
+    };
+    if(W[x][y][z2]==0){
+        return(false);
+    };
+    return(true);
+};
+
+function grid_to_points2(W, X, Y, L, F) {
+    if(X == W.length){
+        return(F(L));
+    };
+    if(Y == W.length){
+        return(grid_to_points2(W, X+1, 0, L, F));
+    };
+    for(var z=0;z<W.length;z++){
+        var g = W[X][Y][z];
+        if(g == 0){
+        } else if(surrounded(X,Y,z,W)){
+        } else {
+            L = L.concat([{x: X*100,
+                           y: Y*100,
+                           z: z*100,
+                           color: colors[g]}]);
+        };
+    };
+    if((Y % Math.round(W.length/3)) == 0){
+        setTimeout(function(){
+            return(grid_to_points2(W, X, Y+1, L, F));
+        }, 0);
+    } else{
+        return(grid_to_points2(W, X, Y+1, L, F));
+    };
+};
     
-    //console.log(JSON.stringify(faces.reduce(function(a,x){return(a.concat(face2triangles(x,colors[3])));}, [])))
-        var triangles = faces.reduce(function(a,x){return(a.concat(face2triangles(x,colors[3],pdb)));}, []);
-    //console.log(JSON.stringify(triangles));
+function main(){
+    var round = 0;
+    var pdb = pdb_maker();
+    var triangles = [];
+    function cron(){
+        if((round % (fps*2)) == 0) {
+            grid_to_points2(cube_grid,0,0,[],function(cps){
+                var cps2 = cps.filter(function(p){
+                    return(distance(p,perspective)<physics_distance);
+                });
+                var pdb2 = pdb_maker();
+                var faces = cps2.reduce(function(a, x){return(cp2faces(cube_points(x, 100, pdb2)).concat(a))}, []);
+                var triangles2 = faces.reduce(function(a,x){return(a.concat(face2triangles(x,colors[3],pdb2)));}, []);
+                pdb = pdb2;
+                triangles = triangles2;
+            });
+        };
+        round += 1;
         movement([37,38,39,40,65,83]);
         var pdb2 = pdb.perspective();
         draw_helper(pdb2, triangles);
@@ -222,7 +311,7 @@ function test(){
 };
 
 //setTimeout(function(){
-//    test();
+//    main();
 //}, 100);
 
 function update_map(F){
@@ -246,26 +335,20 @@ function update_map(F){
         F(a);
     });
 };
-var cps = [];
-update_map(function(W){
-    //console.log(JSON.stringify(x));
-    for(var x=0;x<W.length;x++){
-        for(var y=0;y<W.length;y++){
-            for(var z=0;z<W.length;z++){
-                var g = W[x][y][z];
-                if(g == 0){
-                } else {
-                    cps = cps.concat([{x: x*100,
-                                       y: y*100,
-                                       z: z*100,
-                                       color: colors[g]}]);
-                };
-            };
-        };
-    };
-    test();
-    return(0);
-});
+//var cps = [];
+
+var cube_grid;
+
+
+function map_cron(){
+    update_map(function(W){
+        cube_grid = W;
+        return(0);
+    });
+    setTimeout(map_cron, 3000);
+}
+map_cron();
+setTimeout(main, 1500);
 
 
 
@@ -442,9 +525,9 @@ function draw_square(p1, p2, p3, p4, color) {
 //Controller
 
 var controls = {37:false, 38:false, 39:false, 40:false, 65:false, 83:false};
-var perspective = {x:0,y:0,z:0,theta:0};
+var perspective = {x:0,y:50,z:0,theta:0};
 var step_size = 20;
-var turn_speed = 0.03;
+var turn_speed = 0.06;
 function left() {
     perspective.theta += turn_speed;
 };
