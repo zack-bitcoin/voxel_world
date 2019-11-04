@@ -19,6 +19,7 @@ var colors = [
     "#880000",//red
     "#FF8800",//neon orange
     "#00FF88",//green3
+    "#000000",//black
 ];
 
 
@@ -132,6 +133,9 @@ function pdb_maker() {
         }
     });
 };
+function pos_mod_1(A, B) {
+    return((((A % B) + B) % B));
+}
 function pos_mod(A, B) {
     return((((A % B) + B) % B) - (B/2));
 }
@@ -142,7 +146,8 @@ function in_perspective(point, rotation) {
     var X = point.x - (perspective.x + (100*Math.sin(T)));
     X = pos_mod(X, mapSize);
     var Y = point.y - (perspective.y - 100);
-    var Z = point.z - (perspective.z - (100*Math.cos(T)));
+    Y = pos_mod_1(Y, mapSize);
+    var Z = point.z - (perspective.z - (00*Math.cos(T)));
     Z = pos_mod(Z, mapSize);
     var point2 = {x: X, y: Y, z: Z};
     var point3 = mul_v_m(point2, rotation);
@@ -206,7 +211,7 @@ function cp2faces(pts) {
             [pts[2],pts[4],pts[6],pts[7]],
            ])
 };
-function face2triangles(face, color,pdb){
+function face2triangles(face,pdb){
     var c = pdb.db[face[0]].color;
     return([[face[0],face[1],face[2],c],
             [face[1],face[3],face[2],c]]);
@@ -215,7 +220,7 @@ function face2triangles(face, color,pdb){
 function distance(p1, p2) {
     var mapSize = world_size * 100;
     var xd = pos_mod((p1.x - p2.x), mapSize);
-    var yd = (p1.y - p2.y) % mapSize;
+    var yd = pos_mod((p1.y - p2.y + (mapSize/2)), mapSize);
     var zd = pos_mod((p1.z - p2.z), mapSize);
     return(Math.sqrt((xd*xd)+(yd*yd)+(zd*zd)))
 };
@@ -305,6 +310,38 @@ function grid_to_points2(W, X, Y, L, F) {
         return(grid_to_points2(W, X, Y+1, L, F));
     };
 };
+function update_near_cube(X,Y,Z,V){
+    //var nc2 = JSON.parse(JSON.stringify(near_cubes));
+    console.log("update near cube start");
+    for(var i=0;i<near_cubes.length;i++){
+        var a = near_cubes[i];
+        
+        var mapSize = world_size * 100;
+        //var X2 = pos_mod(a.x, mapSize);
+        //var Y2 = pos_mod_1(a.y, mapSize);
+        //var Z2 = pos_mod(a.z, mapSize);
+        //X2 -= 50;
+        //Y2 -= 50;
+        //Z2 -= 50;
+        X2 = Math.round(a.x/100);
+        Y2 = Math.round(a.y/100);
+        Z2 = Math.round(a.z/100);
+        //X2 = pos_mod_1(X2, world_size);
+        //Y2 = pos_mod_1(Y2, world_size);
+        //Z2 = pos_mod_1(Z2, world_size);
+        
+
+
+        console.log(JSON.stringify([X,Y,Z]));
+        console.log(JSON.stringify([X2,Y2,Z2]));
+        if((X2 == X) && (Y2 == Y) && (Z2 == Z)){
+            console.log("update near cube finish");
+            near_cubes[i] = {x:X, y:Y, z:Z, color:V};
+            return(0);
+        };
+    };
+};
+var near_cubes = [];
     
 function main(){
     var round = 0;
@@ -316,21 +353,32 @@ function main(){
         draw_helper(pdb2, triangles);
         setTimeout(art_cron, 1000/fps);
     };
-    function physics_cron(){
+    function near_cubes_cron(){
         grid_to_points2(cube_grid,0,0,[],function(cps){
-            var cps2 = cps.filter(function(p){
+            near_cubes = cps.filter(function(p){
                 return(distance(p,perspective)<physics_distance);
             });
-            var pdb2 = pdb_maker();
-            var faces = cps2.reduce(function(a, x){return(cp2faces(cube_points(x, 100, pdb2)).concat(a))}, []);
-            var triangles2 = faces.reduce(function(a,x){return(a.concat(face2triangles(x,colors[3],pdb2)));}, []);
-            pdb = pdb2;
-            triangles = triangles2;
-            setTimeout(physics_cron, 30);
+            physics_cron();
+            setTimeout(near_cubes_cron, 200);
         });
     };
-    physics_cron();
+    function physics_cron(){
+        //grid_to_points2(cube_grid,0,0,[],function(cps){
+        //var near_cubes = cps.filter(function(p){
+        //return(distance(p,perspective)<physics_distance);
+    //});
+            var pdb2 = pdb_maker();
+            var faces = near_cubes.reduce(function(a, x){return(cp2faces(cube_points(x, 100, pdb2)).concat(a))}, []);
+            var triangles2 = faces.reduce(function(a,x){return(a.concat(face2triangles(x,pdb2)));}, []);
+            pdb = pdb2;
+            triangles = triangles2;
+        //setTimeout(physics_cron, 30);
+    //});
+    };
+    near_cubes_cron();
+    //physics_cron();
     art_cron();
+    gravity();
 };
 
 //setTimeout(function(){
@@ -358,7 +406,7 @@ function update_map(F){
         F(a);
     });
 };
-function map_time_merge(cube_grid, W, T){
+function map_time_merge(W, T){
     var S = world_size;
     for(var x=0;x<S;x++){
         if(cube_grid[x] == undefined){
@@ -385,7 +433,7 @@ var cube_grid = [];
 function map_cron(F){
     var time = new Date;
     update_map(function(W){
-        map_time_merge(cube_grid, W, Math.round(time.getTime()/100));
+        map_time_merge(W, Math.round(time.getTime()/100));
         if(!(F == undefined)){
             F();
         };
@@ -403,9 +451,10 @@ function cursor() {
     var X = perspective.x;
     var Y = perspective.y;
     var Z = perspective.z;
-    var T = perspective.theta;
+    
     var mapSize = world_size * 100;
     X = pos_mod(X, mapSize);
+    Y = pos_mod_1(Y, mapSize);
     Z = pos_mod(Z, mapSize);
     X -= 50;
     Y -= 50;
@@ -413,12 +462,13 @@ function cursor() {
     X /= 100;
     Y /= 100;
     Z /= 100;
+
+    var T = perspective.theta;
     Z += Math.cos(T);
     X -= Math.sin(T);
-    X = X+world_size;
-    Z = Z+world_size;
-    X = X % world_size;
-    Z = Z % world_size;
+    X = pos_mod_1(X, world_size);
+    Y = pos_mod_1(Y, world_size);
+    Z = pos_mod_1(Z, world_size);
     return([X, Y, Z]);
 };
 
@@ -431,11 +481,51 @@ var controls = {
     40:false,
     65:false,
     83:false};
-var perspective = {x:50,y:50,z:50,theta:0};
+var perspective = {x:50,y:150,z:50,theta:0};
 var bag = [];
 
 var step_size = 100;
 var turn_speed = 0.06;
+
+function collision_detection(X, Y2, Z, F) {
+    var X2 = pos_mod_1(X, world_size);
+    var Z2 = pos_mod_1(Z, world_size);
+    var Y = pos_mod_1(Y2-1, world_size);
+    var Yu = pos_mod_1(Y2-2, world_size);
+    var Yd = pos_mod_1(Y2, world_size);
+    var B1 = (0 == cube_grid[X2][Y][Z2].val);
+    console.log(JSON.stringify([cube_grid[X2][Y][Z2].val,
+                                cube_grid[X2][Yu][Z2].val,
+                                cube_grid[X2][Yd][Z2].val]));
+    if(B1 && ((0 == cube_grid[X2][Yu][Z2].val)
+              || (0 == cube_grid[X2][Yd][Z2].val))){
+        return(F());
+    };
+};
+
+function gravity_start() {
+    perspective.y -= step_size;
+    gravity();
+};
+function gravity() {
+    var T = perspective.theta;
+    var S = Math.sin(T);
+    var C = Math.cos(T);
+    
+    var cu = cursor();
+    var X = cu[0] + S;
+    X = pos_mod_1(X, world_size);
+    var Y = pos_mod_1(cu[1]+1, world_size);
+    var Z = cu[2] - C;
+    Z = pos_mod_1(Z, world_size);
+    console.log(JSON.stringify([X,Y,Z]));
+    if(0 == cube_grid[X][Y][Z].val){
+        perspective.y += step_size;
+        setTimeout(gravity, 300);
+    };
+
+};
+
 function left() {
     //perspective.theta += turn_speed;
     perspective.theta += Math.PI/2;
@@ -445,15 +535,28 @@ function step_left() {
     var T = perspective.theta;
     var S = Math.sin(T);
     var C = Math.cos(T);
-    perspective.z -= Math.round(S*step_size);
-    perspective.x -= Math.round(C*step_size);
+    var cu = cursor();
+    collision_detection(
+        cu[0] - C + S,
+        cu[1],
+        cu[2] - S - C,
+        function(){
+            perspective.z -= Math.round(S*step_size);
+            perspective.x -= Math.round(C*step_size);
+            gravity_start();
+        });
 };
 function up() {
-    var T = perspective.theta;
-    var S = Math.sin(T);
-    var C = Math.cos(T);
-    perspective.z += Math.round((C*step_size));
-    perspective.x -= Math.round((S*step_size));
+    var cu = cursor();
+    console.log(JSON.stringify(cu));
+    collision_detection(cu[0], cu[1], cu[2], function(){
+        var T = perspective.theta;
+        var S = Math.sin(T);
+        var C = Math.cos(T);
+        perspective.z += Math.round((C*step_size));
+        perspective.x -= Math.round((S*step_size));
+        gravity_start();
+    });
 };
 function right() {
     perspective.theta -= Math.PI/2;
@@ -463,15 +566,32 @@ function step_right() {
     var T = perspective.theta;
     var S = Math.sin(T);
     var C = Math.cos(T);
-    perspective.z += Math.round(S*step_size);
-    perspective.x += Math.round(C*step_size);
+
+    var cu = cursor();
+    collision_detection(
+        cu[0] + C - S,
+        cu[1],
+        cu[2] + S + C,
+        function(){
+            perspective.z += Math.round(S*step_size);
+            perspective.x += Math.round(C*step_size);
+            gravity_start();
+        });
 };
 function down() {
     var T = perspective.theta;
     var S = Math.sin(T);
     var C = Math.cos(T);
-    perspective.z -= Math.round(C*step_size);
-    perspective.x += Math.round(S*step_size);
+    var cu = cursor();
+    collision_detection(
+        cu[0]+S+S,
+        cu[1],
+        cu[2]-C-C,
+        function(){
+            perspective.z -= Math.round(C*step_size);
+            perspective.x += Math.round(S*step_size);
+            gravity_start();
+        });
 };
 function give() {
     console.log("give");
@@ -480,10 +600,11 @@ function give() {
         return(0);
     };
     var C = cursor();
-    var C1d = (C[1]+1) % world_size;
-    var C1u = ((C[1]-1)+world_size) % world_size;
+    var C1d = pos_mod_1(C[1]+1, world_size);
+    var C1u = pos_mod_1(C[1]-1, world_size);
+    var C1m = pos_mod_1(C[1], world_size);
 
-    var Mid = cube_grid[C[0]][C[1]][C[2]].val;
+    var Mid = cube_grid[C[0]][C1m][C[2]].val;
     var Up = cube_grid[C[0]][C1u][C[2]].val;
     var Down = cube_grid[C[0]][C1d][C[2]].val;
 
@@ -494,16 +615,22 @@ function give() {
             return(0);
         });
         cube_grid[C[0]][C1d][C[2]] = {val: bag[0], time: Now};
+        //update_near_cube(C[0],C1d,C[2],bag[0]);
+        //near_cubes = near_cubes.concat({x:C[0]*100,y:C1d*100,z:C[2]*100,color:bag[0]});
     }else if(Mid == 0) {
-        variable_public_get(["add",C[0],C[1],C[2],bag[0]],function(x){
+        variable_public_get(["add",C[0],C1m,C[2],bag[0]],function(x){
             return(0);
         });
-        cube_grid[C[0]][C[1]][C[2]] = {val: bag[0], time: Now};
+        cube_grid[C[0]][C1m][C[2]] = {val: bag[0], time: Now};
+        //near_cubes = near_cubes.concat({x:C[0]*100,y:C1m*100,z:C[2]*100,color:bag[0]});
+        //update_near_cube(C[0],C1m,C[2],bag[0]);
     }else if(Up == 0) {
         variable_public_get(["add",C[0],C1u,C[2],bag[0]],function(x){
             return(0);
         });
         cube_grid[C[0]][C1u][C[2]] = {val: bag[0], time: Now};
+        //near_cubes = near_cubes.concat({x:C[0]*100,y:C1u*100,z:C[2]*100,color:bag[0]});
+        //update_near_cube(C[0],C1u,C[2],bag[0]);
     };
     bag = bag.slice(1);
 };
@@ -511,25 +638,18 @@ function eat() {
     console.log("eat");
     console.log(JSON.stringify(cursor()));
     var C = cursor();
-    var C1d = (C[1]+1) % world_size;
-    var C1u = ((C[1]-1)+world_size) % world_size;
+    var C1d = pos_mod_1(C[1]+1, world_size);
+    var C1m = pos_mod_1(C[1],world_size);
+    var C1u = pos_mod_1((C[1]-1), world_size);
 
-    var Mid = cube_grid[C[0]][C[1]][C[2]].val;
+    var Mid = cube_grid[C[0]][C1m][C[2]].val;
     var Up = cube_grid[C[0]][C1u][C[2]].val;
     var Down = cube_grid[C[0]][C1d][C[2]].val;
 
     var time = new Date;
     var Now = time.getTime();
 
-    if(!(Mid == 0)) {
-        variable_public_get(["take",C[0],C[1],C[2]],function(x){
-            return(0);
-        });
-        if(typeof(Mid) == "number"){
-            bag = ([Mid]).concat(bag);
-        }
-        cube_grid[C[0]][C[1]][C[2]] = {val: 0, time: Now};
-    }else if(!(Up == 0)) {
+    if(!(Up == 0)) {
         variable_public_get(["take",C[0],C1u,C[2]],function(x){
             return(0);
         });
@@ -537,6 +657,16 @@ function eat() {
             bag = ([Up]).concat(bag);
         }
         cube_grid[C[0]][C1u][C[2]] = {val: 0, time: Now};
+        //update_near_cube(C[0],C1u,C[2], 0);
+    } else if(!(Mid == 0)) {
+        variable_public_get(["take",C[0],C1m,C[2]],function(x){
+            return(0);
+        });
+        if(typeof(Mid) == "number"){
+            bag = ([Mid]).concat(bag);
+        }
+        cube_grid[C[0]][C1m][C[2]] = {val: 0, time: Now};
+        //update_near_cube(C[0],C1m,C[2], 0);
     }else if(!(Down == 0)) {
         variable_public_get(["take",C[0],C1d,C[2]],function(x){
             return(0);
@@ -545,6 +675,7 @@ function eat() {
             bag = ([Down]).concat(bag);
         }
         cube_grid[C[0]][C1d][C[2]] = {val: 0, time: Now};
+        //update_near_cube(C[0],C1d,C[2], 0);
     }
     //bag is a stack 
 };

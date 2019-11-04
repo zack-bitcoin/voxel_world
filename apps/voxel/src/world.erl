@@ -42,10 +42,14 @@ new_line(E, LN, FN, W, S) ->
     new_line(E+1, LN, FN, [NE|W], S).
 new_element(X, Y, Z, S) ->
     if
-        ((Y<(S-1)) and (Y>(S-10))) ->
-                1+((X+Z+Y) rem 3);
-%        (Y == (S-2)) ->
-%                1+((X+Z) rem 3);
+        ((Y>0) and (Y<(S-5))) ->
+        %((Y<95) and (Y>50)) ->
+        %    1 + 
+        %        (((X div 6) +
+        %              (Y div 6) +
+        %              (Z div 6)) rem 9);
+
+        1+((X+Z+Y) rem 8);
         true -> 0
     end.
 
