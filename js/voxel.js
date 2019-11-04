@@ -169,17 +169,12 @@ function mul_v_m(p, m){
     p2.z = mul_v_v(p, m[2]);
     return(p2);
 };
-function mul_m_m(m1, m2){
-
-};
-
 function column(m, n) {//diagonal flip
     return(m.map(function(x){return(x[n])}));
 };
 function v2p(v) {
     return({x:v[0],y:v[1],z:v[2]});
 };
-
 function mul_m_m(m1, m2) {
     var cs = [0,1,2].map(function(x){return(column(m2, x))});
     return([0,1,2].map(function(n){return(
@@ -263,22 +258,22 @@ function surrounded(X,Y,Z,W) {
     if(z3 >= W.length){
         z3 -= W.length
     };
-    if(W[x3][y][z]==0){
+    if(W[x3][y][z].val==0){
         return(false);
     };
-    if(W[x2][y][z]==0){
+    if(W[x2][y][z].val==0){
         return(false);
     };
-    if(W[x][y3][z]==0){
+    if(W[x][y3][z].val==0){
         return(false);
     };
-    if(W[x][y2][z]==0){
+    if(W[x][y2][z].val==0){
         return(false);
     };
-    if(W[x][y][z3]==0){
+    if(W[x][y][z3].val==0){
         return(false);
     };
-    if(W[x][y][z2]==0){
+    if(W[x][y][z2].val==0){
         return(false);
     };
     return(true);
@@ -292,7 +287,7 @@ function grid_to_points2(W, X, Y, L, F) {
         return(grid_to_points2(W, X+1, 0, L, F));
     };
     for(var z=0;z<W.length;z++){
-        var g = W[X][Y][z];
+        var g = W[X][Y][z].val;
         if(g == 0){
         } else if(surrounded(X,Y,z,W)){
         } else {
@@ -303,7 +298,7 @@ function grid_to_points2(W, X, Y, L, F) {
         };
     };
     if((Y % Math.round(W.length/3)) == 0){
-        setTimeout(function(){
+        setTimeout(function(){//this is a time consuming function, so we break it into chunks and run it in the background
             return(grid_to_points2(W, X, Y+1, L, F));
         }, 0);
     } else{
@@ -315,26 +310,27 @@ function main(){
     var round = 0;
     var pdb = pdb_maker();
     var triangles = [];
-    function cron(){
-        if((round % fps) == 0) {
-            grid_to_points2(cube_grid,0,0,[],function(cps){
-                var cps2 = cps.filter(function(p){
-                    return(distance(p,perspective)<physics_distance);
-                });
-                var pdb2 = pdb_maker();
-                var faces = cps2.reduce(function(a, x){return(cp2faces(cube_points(x, 100, pdb2)).concat(a))}, []);
-                var triangles2 = faces.reduce(function(a,x){return(a.concat(face2triangles(x,colors[3],pdb2)));}, []);
-                pdb = pdb2;
-                triangles = triangles2;
-            });
-        };
-        round += 1;
+    function art_cron(){
         movement([13,16,37,38,39,40,65,83]);
         var pdb2 = pdb.perspective();
         draw_helper(pdb2, triangles);
-        setTimeout(cron, 1000/fps);
+        setTimeout(art_cron, 1000/fps);
     };
-    cron();
+    function physics_cron(){
+        grid_to_points2(cube_grid,0,0,[],function(cps){
+            var cps2 = cps.filter(function(p){
+                return(distance(p,perspective)<physics_distance);
+            });
+            var pdb2 = pdb_maker();
+            var faces = cps2.reduce(function(a, x){return(cp2faces(cube_points(x, 100, pdb2)).concat(a))}, []);
+            var triangles2 = faces.reduce(function(a,x){return(a.concat(face2triangles(x,colors[3],pdb2)));}, []);
+            pdb = pdb2;
+            triangles = triangles2;
+            setTimeout(physics_cron, 30);
+        });
+    };
+    physics_cron();
+    art_cron();
 };
 
 //setTimeout(function(){
@@ -362,16 +358,44 @@ function update_map(F){
         F(a);
     });
 };
+function map_time_merge(cube_grid, W, T){
+    var S = world_size;
+    for(var x=0;x<S;x++){
+        if(cube_grid[x] == undefined){
+            cube_grid[x] = [];
+        };
+        for(var y=0;y<S;y++){
+            if(cube_grid[x][y] == undefined){
+                cube_grid[x][y] = [];
+            };
+            for(var z=0;z<S;z++){
+                if(cube_grid[x][y][z] == undefined){
+                    cube_grid[x][y][z] = {val: W[x][y][z],
+                                          time: T};
+                } else if(cube_grid[x][y][z].time < T) {
+                    cube_grid[x][y][z] = {val: W[x][y][z],
+                                          time:T};
+                }
+            };
+        };
+    };
+};
 
-var cube_grid;
-function map_cron(){
-    update_map(function(W){ cube_grid = W; });
+var cube_grid = [];
+function map_cron(F){
+    var time = new Date;
+    update_map(function(W){
+        map_time_merge(cube_grid, W, Math.round(time.getTime()/100));
+        if(!(F == undefined)){
+            F();
+        };
+    });
     setTimeout(map_cron, 2000);
 }
-update_map(function(W){ cube_grid = W;
-                        main();
-                        setTimeout(map_cron, 2000);
-                      });
+function start(){
+    map_cron(function(){ main(); });
+};
+start();
 
 //Controller
 
@@ -452,28 +476,34 @@ function down() {
 function give() {
     console.log("give");
     console.log(JSON.stringify(cursor()));
+    if(bag.length<1){
+        return(0);
+    };
     var C = cursor();
     var C1d = (C[1]+1) % world_size;
     var C1u = ((C[1]-1)+world_size) % world_size;
 
-    var Mid = cube_grid[C[0]][C[1]][C[2]];
-    var Up = cube_grid[C[0]][C1u][C[2]];
-    var Down = cube_grid[C[0]][C1d][C[2]];
+    var Mid = cube_grid[C[0]][C[1]][C[2]].val;
+    var Up = cube_grid[C[0]][C1u][C[2]].val;
+    var Down = cube_grid[C[0]][C1d][C[2]].val;
+
+    var time = new Date;
+    var Now = time.getTime();
     if(Down == 0) {
         variable_public_get(["add",C[0],C1d,C[2],bag[0]],function(x){
             return(0);
         });
-        cube_grid[C[0]][C1d][C[2]] = bag[0];
+        cube_grid[C[0]][C1d][C[2]] = {val: bag[0], time: Now};
     }else if(Mid == 0) {
         variable_public_get(["add",C[0],C[1],C[2],bag[0]],function(x){
             return(0);
         });
-        cube_grid[C[0]][C[1]][C[2]] = bag[0];
+        cube_grid[C[0]][C[1]][C[2]] = {val: bag[0], time: Now};
     }else if(Up == 0) {
         variable_public_get(["add",C[0],C1u,C[2],bag[0]],function(x){
             return(0);
         });
-        cube_grid[C[0]][C1u][C[2]] = bag[0];
+        cube_grid[C[0]][C1u][C[2]] = {val: bag[0], time: Now};
     };
     bag = bag.slice(1);
 };
@@ -484,28 +514,37 @@ function eat() {
     var C1d = (C[1]+1) % world_size;
     var C1u = ((C[1]-1)+world_size) % world_size;
 
-    var Mid = cube_grid[C[0]][C[1]][C[2]];
-    var Up = cube_grid[C[0]][C1u][C[2]];
-    var Down = cube_grid[C[0]][C1d][C[2]];
+    var Mid = cube_grid[C[0]][C[1]][C[2]].val;
+    var Up = cube_grid[C[0]][C1u][C[2]].val;
+    var Down = cube_grid[C[0]][C1d][C[2]].val;
+
+    var time = new Date;
+    var Now = time.getTime();
 
     if(!(Mid == 0)) {
         variable_public_get(["take",C[0],C[1],C[2]],function(x){
             return(0);
         });
-        bag = ([Mid]).concat(bag);
-        cube_grid[C[0]][C[1]][C[2]] = 0;
+        if(typeof(Mid) == "number"){
+            bag = ([Mid]).concat(bag);
+        }
+        cube_grid[C[0]][C[1]][C[2]] = {val: 0, time: Now};
     }else if(!(Up == 0)) {
         variable_public_get(["take",C[0],C1u,C[2]],function(x){
             return(0);
         });
-        bag = ([Up]).concat(bag);
-        cube_grid[C[0]][C1u][C[2]] = 0;
+        if(typeof(Up) == "number"){
+            bag = ([Up]).concat(bag);
+        }
+        cube_grid[C[0]][C1u][C[2]] = {val: 0, time: Now};
     }else if(!(Down == 0)) {
         variable_public_get(["take",C[0],C1d,C[2]],function(x){
             return(0);
         });
-        bag = ([Down]).concat(bag);
-        cube_grid[C[0]][C1d][C[2]] = 0;
+        if(typeof(Down) == "number"){
+            bag = ([Down]).concat(bag);
+        }
+        cube_grid[C[0]][C1d][C[2]] = {val: 0, time: Now};
     }
     //bag is a stack 
 };
