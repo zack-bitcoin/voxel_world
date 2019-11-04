@@ -1,6 +1,4 @@
-
 -module(file_handler).
-
 -export([init/2, init/3, handle/2, terminate/3]).
 %example of talking to this handler:
 %httpc:request(post, {"http://127.0.0.1:3011/", [], "application/octet-stream", "echo"}, [], []).
@@ -15,21 +13,14 @@ handle(Req, State) ->
             <<"/voxel.js">> -> F0;
             <<"/server.js">> -> F0;
             <<"/rpc.js">> -> F0;
-
-            <<"/codecBytes.js">> -> F0;
-            <<"/crypto.js">> -> F0;
-            <<"/format.js">> -> F0;
             <<"/main.html">> -> F0;
             <<"/favicon.ico">> -> F0;
-            <<"/sjcl.js">> -> F0;
-            <<"/signing.js">> -> F0;
             X -> 
                 io:fwrite("ext file handler block access to: "),
                 io:fwrite(X),
                 io:fwrite("\n"),
                 <<"/main.html">>
            end,
-    %File = << PrivDir/binary, <<"/external_web">>/binary, F/binary>>,
     File = << PrivDir/binary, F/binary>>,
     {ok, _Data, _} = cowboy_req:read_body(Req),
     Headers = #{<<"content-type">> => <<"text/html">>,

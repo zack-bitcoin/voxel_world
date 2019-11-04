@@ -3,7 +3,8 @@
 -export([start_link/0,code_change/3,handle_call/3,handle_cast/2,handle_info/2,init/1,terminate/2,
          add/4,delete/3,new/0,compress/0,read/0]).
 -define(SIZE, 20).
--record(db, {raw, compressed}).
+-record(db, {raw, %the world in editable tuple format.
+             compressed}).%the world in javascript compatible base64 format.
 
 init(ok) -> {ok, #db{}}.
 start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, ok, []).

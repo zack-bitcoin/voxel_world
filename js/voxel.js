@@ -362,24 +362,16 @@ function update_map(F){
         F(a);
     });
 };
-//var cps = [];
 
 var cube_grid;
-
-
 function map_cron(){
-    update_map(function(W){
-        cube_grid = W;
-        return(0);
-    });
-    setTimeout(map_cron, 3000);
+    update_map(function(W){ cube_grid = W; });
+    setTimeout(map_cron, 2000);
 }
-map_cron();
-setTimeout(main, 1500);
-
-
-
-
+update_map(function(W){ cube_grid = W;
+                        main();
+                        setTimeout(map_cron, 2000);
+                      });
 
 //Controller
 

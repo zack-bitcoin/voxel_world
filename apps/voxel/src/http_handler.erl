@@ -27,7 +27,3 @@ doit({take, X, Y, Z}) ->
 doit({add, X, Y, Z, V}) ->
     world:add(X, Y, Z, V),
     {ok, 0}.
-
-
-
-    
