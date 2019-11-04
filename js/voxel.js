@@ -4,8 +4,8 @@ c.height = document.body.clientHeight;
 
 var ctx = c.getContext("2d");
 var world_size;
-var vision = 1200;
-var physics_distance = 1500;
+var vision = 900;
+var physics_distance = 1200;
 
 var fps = 30;
 var time = 0;
@@ -121,6 +121,9 @@ function pdb_maker() {
         perspective: function(){
             //rotates and shifts each point over based on your current location and the direction you are facing. Points are still specified in 3d.
             var r = rotation_matrix_y(perspective.theta);
+            //console.log(r);
+            r = mul_m_m(rotation_matrix_x(Math.PI/6), r);
+            //console.log(JSON.stringify([r, r2]));
             var db2 = {};
             for(i=0;i<top;i++) {
                 db2[i] = in_perspective(db[i], r);
@@ -133,11 +136,13 @@ function pos_mod(A, B) {
     return((((A % B) + B) % B) - (B/2));
 }
 function in_perspective(point, rotation) {
+    var T = perspective.theta;
     var mapSize = world_size * 100;
-    var X = point.x - perspective.x;
+    //var X = point.x - perspective.x;
+    var X = point.x - (perspective.x + (100*Math.sin(T)));
     X = pos_mod(X, mapSize);
-    var Y = point.y - perspective.y;
-    var Z = point.z - perspective.z;
+    var Y = point.y - (perspective.y - 100);
+    var Z = point.z - (perspective.z - (100*Math.cos(T)));
     Z = pos_mod(Z, mapSize);
     var point2 = {x: X, y: Y, z: Z};
     var point3 = mul_v_m(point2, rotation);
@@ -149,6 +154,11 @@ function rotation_matrix_y(angle) {
         [0,1,0],
         [-Math.sin(angle),0,Math.cos(angle)]]);
 };
+function rotation_matrix_x(angle) {
+    return([[1,0,0],
+            [0,Math.cos(angle),-Math.sin(angle)],
+            [0,Math.sin(angle),Math.cos(angle)]]);
+};
 function mul_v_v(p, v) {
     return (p.x*v[0]) + (p.y * v[1]) + (p.z * v[2]);
 };
@@ -158,6 +168,23 @@ function mul_v_m(p, m){
     p2.y = mul_v_v(p, m[1]);
     p2.z = mul_v_v(p, m[2]);
     return(p2);
+};
+function mul_m_m(m1, m2){
+
+};
+
+function column(m, n) {//diagonal flip
+    return(m.map(function(x){return(x[n])}));
+};
+function v2p(v) {
+    return({x:v[0],y:v[1],z:v[2]});
+};
+
+function mul_m_m(m1, m2) {
+    var cs = [0,1,2].map(function(x){return(column(m2, x))});
+    return([0,1,2].map(function(n){return(
+        cs.map(function(x){return(
+            mul_v_v(v2p(m1[n]), x))}))}));
 };
 
 function cube_points(p, s, pdb) {
@@ -289,7 +316,7 @@ function main(){
     var pdb = pdb_maker();
     var triangles = [];
     function cron(){
-        if((round % (fps*2)) == 0) {
+        if((round % fps) == 0) {
             grid_to_points2(cube_grid,0,0,[],function(cps){
                 var cps2 = cps.filter(function(p){
                     return(distance(p,perspective)<physics_distance);
@@ -352,174 +379,6 @@ setTimeout(main, 1500);
 
 
 
-/*
-function minus_3(a, b) {
-    return({x: a.x - b.x,
-            y: a.y - b.y,
-            z: a.z - b.z});
-};
-function normalize(v) {
-    var d = distance_to(v);
-    return({x: v.x / d, y: v.y / d, z: v.z / d});
-};
-function vector_maker(location, direction) {
-    var d2 = minus_3(direction, location);
-    return(normalize(d2));
-};
-function cube(sidelength, corner) {
-    var W = c.width;
-    var corner2 = corner;
-    return(function(vector, db){
-        var corner = db[corner2];
-        var d = three_to_two(vector);
-        var c2 = three_to_two(corner);
-        var sidelength2 = sidelength * W / corner.z;
-        return((d.x < c2.x+sidelength2) &&
-               (d.x > c2.x) &&
-               (d.y < c2.y + sidelength2) &&
-                (d.y > c2.y));
-    });
-};
-function sphere(radius, center) {
-    var W = c.width;
-    var center2 = center;
-    var pixel_width = 10;
-    var wide = c.width / pixel_width;
-    var tall = c.height / pixel_width;
-    return(function(vector, db) {
-        var center = db[center2];
-        var d = three_to_two2(vector);
-        var c2 = three_to_two(center);
-        var r2 = radius * W / (distance_to(center));
-        var X = d.x - c2.x;
-        var Y = d.y - c2.y;
-        var D = (X**2) + (Y**2);
-        //var r2 = r2 * (1 + ((Math.min(0, Math.sqrt(D)-r2))/1000));
-        //console.log(Math.sin(Math.sqrt(D)/W));
-        //var r2 = r2 / Math.cos(Math.sqrt(D)/W);
-        //var r2 = radius * W / center.z;
-        return((r2**2) > D);
-    });
-};
-
-function make_3_point(a, b, c) {
-    return {x: a, y: b, z: c};
-}
-function make_2_point(a, b) {
-    return {x: a, y: b};
-}
-function three_to_two2(a) {
-    var W = c.width;
-    var Z = W;
-    var H = c.height;
-    //var f = a.z / Z;
-    var f = distance_to(a) / W;
-    var X = (W/2) + (a.x / f);
-    var Y = (H/2) + (a.y / f);
-    return {x: X, y: Y};
-}
-function three_to_two(a) {
-    var W = c.width;
-    var Z = W;
-    var H = c.height;
-    var f = a.z / Z;
-    //var f = distance_to(a) / W;
-    var X = (W/2) + (a.x / f);
-    var Y = (H/2) + (a.y / f);
-    return {x: X, y: Y};
-}
-var points = [];
-var many_points = 15;
-var sphere_size = 20;
-for(var i = 0; i<many_points; i++){
-    points[i] = pdb.add((i*500/many_points)-250,
-                        -(sphere_size),
-                        500);
-};
-var things = [];
-for(var i=0; i<points.length; i++){
-    things[i] = sphere_thing(points[i], sphere_size, colors[i%3]);
-};
-//var things = points.map(function(p) {return(sphere_thing(p, sphere_size, colors[1]));});
-    
-function sphere_thing(point, radius, color){
-    return({where: sphere(radius, point),
-            point: point,
-            color: color});
-};
-
-function adjust_all(){
-    for(var i=0; i<points.length; i++){
-        pdb.adjust(points[i], 0,
-                   8*Math.sin(Math.PI*time*(40+i)/400),
-                   8*Math.cos(Math.PI*time*(40+i)/400));
-    };
-};
-
-function cron(){
-    //time_step_page();
-    time += 1;
-    adjust_all();
-    movement([37,38,39,40,65,83]);
-    draw_helper();
-    setTimeout(cron, 1000/fps);
-};
-setTimeout(function(){
-   return(cron());
-}, 100);
-//draw_helper();
-function distance_to(v) {
-    return(Math.sqrt((v.x**2) + (v.y**2) + (v.z**2)));
-};
-function draw_helper() {
-    var p = make_3_point(0,0,0);
-    var pixel_width = 10;
-    var db = pdb.perspective();
-    things = things.sort(function(a,b){return(distance_to(db[a.point]) - distance_to(db[b.point]));});
-    var wide = c.width / pixel_width;
-    var tall = c.height / pixel_width;
-    for(var x = 0; x<wide; x++) {
-        for(var y = 0; y<tall; y++){
-            var color = "#FFFFFF";//default pixel color is white.
-            var X1 = (x-(wide/2));
-            var Y1 = (y-(tall/2));
-            var Z = Math.sqrt(wide**2 - X1**2 - Y1**2);
-            X = X1*Math.PI/wide/2;
-            Y = Y1*Math.PI/tall/4;
-            var d = make_3_point(Math.sin(X)*Math.cos(Y), Math.sin(Y), Math.cos(X)*Math.cos(Y));
-
-            var d2 = make_3_point(X1,Y1,Z);
-            var V = vector_maker(p, d);
-            for(var i=0; i<things.length; i++){
-                var T = things[i];
-                if(visible(db[T.point])) {
-                    if(T.where(V, db)){
-                        color = T.color;
-                        i=things.length;
-                    };
-                };
-            };
-            var p1 = three_to_two2(d2);
-            //var p1 = three_to_two(d2);
-            //console.log(JSON.stringify([p1, p10]));
-            var size = pixel_width;
-            var p2 = {y: p1.y, x: p1.x + size};
-            var p3 = {y: p1.y + size, x: p1.x};
-            var p4 = {y: p1.y + size, x: p1.x + size};
-            draw_square(p1, p2, p4, p3, color);
-        };
-    };
-};
-function draw_square(p1, p2, p3, p4, color) {
-    ctx.beginPath();
-    ctx.moveTo(p1.x, p1.y);
-    ctx.lineTo(p2.x, p2.y);
-    ctx.lineTo(p3.x, p3.y);
-    ctx.lineTo(p4.x, p4.y);
-    ctx.fillStyle = color;
-    ctx.fill();
-}
-*/
 
 
 //Controller
@@ -564,38 +423,39 @@ var turn_speed = 0.06;
 function left() {
     //perspective.theta += turn_speed;
     perspective.theta += Math.PI/2;
+    perspective.theta %= (2*Math.PI);
 };
 function step_left() {
     var T = perspective.theta;
     var S = Math.sin(T);
     var C = Math.cos(T);
-    perspective.z -= (S*step_size);
-    perspective.x -= (C*step_size);
+    perspective.z -= Math.round(S*step_size);
+    perspective.x -= Math.round(C*step_size);
 };
 function up() {
     var T = perspective.theta;
     var S = Math.sin(T);
     var C = Math.cos(T);
-    perspective.z += (C*step_size);
-    perspective.x -= (S*step_size);
+    perspective.z += Math.round((C*step_size));
+    perspective.x -= Math.round((S*step_size));
 };
 function right() {
-    //perspective.theta -= turn_speed;
     perspective.theta -= Math.PI/2;
+    perspective.theta %= (2*Math.PI);
 };
 function step_right() {
     var T = perspective.theta;
     var S = Math.sin(T);
     var C = Math.cos(T);
-    perspective.z += (S*step_size);
-    perspective.x += (C*step_size);
+    perspective.z += Math.round(S*step_size);
+    perspective.x += Math.round(C*step_size);
 };
 function down() {
     var T = perspective.theta;
     var S = Math.sin(T);
     var C = Math.cos(T);
-    perspective.z -= (C*step_size);
-    perspective.x += (S*step_size);
+    perspective.z -= Math.round(C*step_size);
+    perspective.x += Math.round(S*step_size);
 };
 function give() {
     console.log("give");
@@ -700,11 +560,6 @@ function movement(L){
     return(movement(L.slice(1)));
 };
 
-/*
-// physics
-
-
-*/
 
 
 
