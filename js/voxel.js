@@ -7,7 +7,7 @@ var world_size;
 var vision = 900;
 var physics_distance = 1200;
 
-var fps = 30;
+var fps = 6;
 var time = 0;
 var colors = [
     "#000000",//black
@@ -147,7 +147,7 @@ function in_perspective(point, rotation) {
     X = pos_mod(X, mapSize);
     var Y = point.y - (perspective.y - 100);
     Y = pos_mod_1(Y, mapSize);
-    var Z = point.z - (perspective.z - (00*Math.cos(T)));
+    var Z = point.z - (perspective.z - (100*Math.cos(T)));
     Z = pos_mod(Z, mapSize);
     var point2 = {x: X, y: Y, z: Z};
     var point3 = mul_v_m(point2, rotation);
@@ -494,9 +494,9 @@ function collision_detection(X, Y2, Z, F) {
     var Yu = pos_mod_1(Y2-2, world_size);
     var Yd = pos_mod_1(Y2, world_size);
     var B1 = (0 == cube_grid[X2][Y][Z2].val);
-    console.log(JSON.stringify([cube_grid[X2][Y][Z2].val,
-                                cube_grid[X2][Yu][Z2].val,
-                                cube_grid[X2][Yd][Z2].val]));
+//    console.log(JSON.stringify([cube_grid[X2][Y][Z2].val,
+//                                cube_grid[X2][Yu][Z2].val,
+//                                cube_grid[X2][Yd][Z2].val]));
     if(B1 && ((0 == cube_grid[X2][Yu][Z2].val)
               || (0 == cube_grid[X2][Yd][Z2].val))){
         return(F());
@@ -518,7 +518,7 @@ function gravity() {
     var Y = pos_mod_1(cu[1]+1, world_size);
     var Z = cu[2] - C;
     Z = pos_mod_1(Z, world_size);
-    console.log(JSON.stringify([X,Y,Z]));
+    //console.log(JSON.stringify([X,Y,Z]));
     if(0 == cube_grid[X][Y][Z].val){
         perspective.y += step_size;
         setTimeout(gravity, 300);
@@ -548,7 +548,7 @@ function step_left() {
 };
 function up() {
     var cu = cursor();
-    console.log(JSON.stringify(cu));
+    //console.log(JSON.stringify(cu));
     collision_detection(cu[0], cu[1], cu[2], function(){
         var T = perspective.theta;
         var S = Math.sin(T);
@@ -594,8 +594,8 @@ function down() {
         });
 };
 function give() {
-    console.log("give");
-    console.log(JSON.stringify(cursor()));
+    //console.log("give");
+    //console.log(JSON.stringify(cursor()));
     if(bag.length<1){
         return(0);
     };
@@ -635,8 +635,8 @@ function give() {
     bag = bag.slice(1);
 };
 function eat() {
-    console.log("eat");
-    console.log(JSON.stringify(cursor()));
+    //console.log("eat");
+    //console.log(JSON.stringify(cursor()));
     var C = cursor();
     var C1d = pos_mod_1(C[1]+1, world_size);
     var C1m = pos_mod_1(C[1],world_size);
