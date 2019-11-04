@@ -302,7 +302,7 @@ function main(){
             });
         };
         round += 1;
-        movement([37,38,39,40,65,83]);
+        movement([13,16,37,38,39,40,65,83]);
         var pdb2 = pdb.perspective();
         draw_helper(pdb2, triangles);
         setTimeout(cron, 1000/fps);
@@ -524,12 +524,46 @@ function draw_square(p1, p2, p3, p4, color) {
 
 //Controller
 
-var controls = {37:false, 38:false, 39:false, 40:false, 65:false, 83:false};
-var perspective = {x:0,y:50,z:0,theta:0};
-var step_size = 20;
+function cursor() {
+    var X = perspective.x;
+    var Y = perspective.y;
+    var Z = perspective.z;
+    var T = perspective.theta;
+    var mapSize = world_size * 100;
+    X = pos_mod(X, mapSize);
+    Z = pos_mod(Z, mapSize);
+    X -= 50;
+    Y -= 50;
+    Z -= 50;
+    X /= 100;
+    Y /= 100;
+    Z /= 100;
+    Z += Math.cos(T);
+    X -= Math.sin(T);
+    X = X+world_size;
+    Z = Z+world_size;
+    X = X % world_size;
+    Z = Z % world_size;
+    return([X, Y, Z]);
+};
+
+var controls = {
+    13:false,
+    16:false,
+    37:false,
+    38:false,
+    39:false,
+    40:false,
+    65:false,
+    83:false};
+var perspective = {x:50,y:50,z:50,theta:0};
+var bag = [];
+
+var step_size = 100;
 var turn_speed = 0.06;
 function left() {
-    perspective.theta += turn_speed;
+    //perspective.theta += turn_speed;
+    perspective.theta += Math.PI/2;
 };
 function step_left() {
     var T = perspective.theta;
@@ -546,7 +580,8 @@ function up() {
     perspective.x -= (S*step_size);
 };
 function right() {
-    perspective.theta -= turn_speed;
+    //perspective.theta -= turn_speed;
+    perspective.theta -= Math.PI/2;
 };
 function step_right() {
     var T = perspective.theta;
@@ -562,8 +597,70 @@ function down() {
     perspective.z -= (C*step_size);
     perspective.x += (S*step_size);
 };
+function give() {
+    console.log("give");
+    console.log(JSON.stringify(cursor()));
+    var C = cursor();
+    var C1d = (C[1]+1) % world_size;
+    var C1u = ((C[1]-1)+world_size) % world_size;
+
+    var Mid = cube_grid[C[0]][C[1]][C[2]];
+    var Up = cube_grid[C[0]][C1u][C[2]];
+    var Down = cube_grid[C[0]][C1d][C[2]];
+    if(Down == 0) {
+        variable_public_get(["add",C[0],C1d,C[2],bag[0]],function(x){
+            return(0);
+        });
+        cube_grid[C[0]][C1d][C[2]] = bag[0];
+    }else if(Mid == 0) {
+        variable_public_get(["add",C[0],C[1],C[2],bag[0]],function(x){
+            return(0);
+        });
+        cube_grid[C[0]][C[1]][C[2]] = bag[0];
+    }else if(Up == 0) {
+        variable_public_get(["add",C[0],C1u,C[2],bag[0]],function(x){
+            return(0);
+        });
+        cube_grid[C[0]][C1u][C[2]] = bag[0];
+    };
+    bag = bag.slice(1);
+};
+function eat() {
+    console.log("eat");
+    console.log(JSON.stringify(cursor()));
+    var C = cursor();
+    var C1d = (C[1]+1) % world_size;
+    var C1u = ((C[1]-1)+world_size) % world_size;
+
+    var Mid = cube_grid[C[0]][C[1]][C[2]];
+    var Up = cube_grid[C[0]][C1u][C[2]];
+    var Down = cube_grid[C[0]][C1d][C[2]];
+
+    if(!(Mid == 0)) {
+        variable_public_get(["take",C[0],C[1],C[2]],function(x){
+            return(0);
+        });
+        bag = ([Mid]).concat(bag);
+        cube_grid[C[0]][C[1]][C[2]] = 0;
+    }else if(!(Up == 0)) {
+        variable_public_get(["take",C[0],C1u,C[2]],function(x){
+            return(0);
+        });
+        bag = ([Up]).concat(bag);
+        cube_grid[C[0]][C1u][C[2]] = 0;
+    }else if(!(Down == 0)) {
+        variable_public_get(["take",C[0],C1d,C[2]],function(x){
+            return(0);
+        });
+        bag = ([Down]).concat(bag);
+        cube_grid[C[0]][C1d][C[2]] = 0;
+    }
+    //bag is a stack 
+};
 
 var keys = {};
+keys[13] = give;//enter key gives
+keys[16] = eat;//shift key eats
 keys[37] = left;
 keys[38] = up;
 keys[39] = right;
@@ -572,6 +669,7 @@ keys[65] = step_left;
 keys[83] = step_right;
 document.addEventListener('keydown', function(event) {
     var k = event.keyCode;
+    //console.log(k);
     var cv = controls[k];
     if(cv == false) {
         controls[k] = true;
@@ -581,6 +679,7 @@ document.addEventListener('keydown', function(event) {
     //if(!(f == undefined)){ f(); };
 //    console.log(event.keyCode);
 });
+/*
 document.addEventListener('keyup', function(event) {
     var k = event.keyCode;
     var cv = controls[k];
@@ -588,13 +687,15 @@ document.addEventListener('keyup', function(event) {
         controls[k] = false;
     };
 });
- 
+*/ 
 function movement(L){
     if(L.length == 0){return(0);};
     var H = L[0];
+    //console.log(H);
     //console.log(JSON.stringify(controls));
     if(controls[H]){
         keys[H]();
+        controls[H] = false;
     };
     return(movement(L.slice(1)));
 };
