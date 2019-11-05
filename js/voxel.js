@@ -188,10 +188,11 @@ function v2p(v) {
     return({x:v[0],y:v[1],z:v[2]});
 };
 function mul_m_m(m1, m2) {
-    var cs = [0,1,2].map(function(x){return(column(m2, x))});
-    return([0,1,2].map(function(n){return(
-        cs.map(function(x){return(
-            mul_v_v(v2p(m1[n]), x))}))}));
+    var cs = [0,1,2].map(function(x){
+        return(column(m2, x))});
+    return([0,1,2].map(function(n){
+        return(cs.map(function(x){
+            return(mul_v_v(v2p(m1[n]), x))}))}));
 };
 function avatar_triangles(p, s, pdb) {
     var mapSize = world_size * 100;
@@ -771,6 +772,7 @@ keys[67] = camera;//c key for camera
 document.addEventListener('keydown', function(event) {
     var k = event.keyCode;
     //console.log(k);
+    error_msg.innerHTML = JSON.stringify(k);
     var cv = controls[k];
     if(cv == false) {
         controls[k] = true;
@@ -780,6 +782,31 @@ document.addEventListener('keydown', function(event) {
     //if(!(f == undefined)){ f(); };
 //    console.log(event.keyCode);
 });
+var error_msg = document.getElementById("error_msg");
+var touch_spot = {x: 0, y: 0, t: 0};
+document.body.addEventListener('touchstart', function(e){
+    //alert(e.changedTouches[0].pageX); // alert pageX coordinate of touch point
+    //error_msg.innerHTML = JSON.stringify(
+    //    [e.changedTouches[0].pageX,
+    //     e.changedTouches[0].pageY]);
+    var time = new Date;
+    touch_spot = {x: e.changedTouches[0].pageX,
+                  y: e.changedTouches[0].pageY,
+                  t: time.getTime()};
+    //error_msg.innerHTML = "start";
+}, false);
+
+document.body.addEventListener('touchend', function(e){
+    //var touchobj = e.changedTouches[0] // reference first touch point for this event
+    //statusdiv.innerHTML = 'Status: touchend<br> Resting x coordinate: ' + touchobj.clientX + 'px'
+    //e.preventDefault()
+    var time = new Date;
+    var dx = touch_spot.x - e.changedTouches[0].pageX;
+    var dy = touch_spot.y - e.changedTouches[0].pageY;
+    var dt = touch_spot.t - time.getTime();
+
+    error_msg.innerHTML = JSON.stringify([-dt, dx, dy]);
+}, false);
 /*
 document.addEventListener('keyup', function(event) {
     var k = event.keyCode;
