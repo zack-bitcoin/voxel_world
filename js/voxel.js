@@ -772,7 +772,7 @@ keys[67] = camera;//c key for camera
 document.addEventListener('keydown', function(event) {
     var k = event.keyCode;
     //console.log(k);
-    error_msg.innerHTML = JSON.stringify(k);
+    //error_msg.innerHTML = JSON.stringify(k);
     var cv = controls[k];
     if(cv == false) {
         controls[k] = true;
