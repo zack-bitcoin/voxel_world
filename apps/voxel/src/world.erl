@@ -40,16 +40,34 @@ new_line(S, LN, FN, W, S) -> list_to_tuple(W);
 new_line(E, LN, FN, W, S) -> 
     NE = new_element(E, LN, FN, S),
     new_line(E+1, LN, FN, [NE|W], S).
+-define(MODE, quilt).
 new_element(X, Y, Z, S) ->
     if
         ((Y>(S div 3)) and (Y<(S-5))) ->
-            1 + 
-                (((X div 6) +
-                      (Y div 6) +
-                      (Z div 6) +
-                      (4*((X+Y+Z) rem 2))
-                 ) rem 8);
+            if
+                (?MODE == quilt) ->
+                    A = 5*(X div 6) + 7*(Y div 6) + 11*(Z div 6),
+                    1 + 
+                        ((A +
+                              %(3*((X+Y+Z) rem 2))
+                              ((A rem 9)*
+                                   ((2*X+3*Y+5*Z) rem 3))
+                         ) rem 8);
+                (?MODE == phi) ->
+                    random_phi(1,9)
+            end;
         true -> 0
+    end.
+random_phi(A, B) -> 
+    U = random:uniform(),
+    random_phi2(A, B, U).
+random_phi2(X, X, _) -> X;
+random_phi2(A, B, U) -> 
+    if
+        (U < 0.618034) -> A;
+        true ->
+            U2 = (U - 0.618034) / (1 - 0.618034),
+            random_phi2(A+1, B, U2)
     end.
 
 delete_from_volume(X, Y, Z, D3) ->

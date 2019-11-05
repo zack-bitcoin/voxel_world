@@ -93,8 +93,8 @@ function visible(Z) {
     //var T = perspective.theta;
     //var ZL = camera_level*100;
     //return ((Z.z > ZL) && (Z.z < vision) && (Z.x > -(vision/2)) && (Z.x < (vision/2)));
-    return((Z.z > 0));
-    //return(true);
+    //return((Z.z > 0));
+    return(Z.z > (100*camera_const*(camera_level-0.8)));
 };
 function pdb_maker() {
     var db = {type: "points"};
@@ -146,15 +146,16 @@ function pos_mod_1(A, B) {
 function pos_mod(A, B) {
     return((((A % B) + B) % B) - (B/2));
 }
+var camera_const = 1.3;
 function in_perspective(point, rotation) {
     var T = perspective.theta;
     var mapSize = world_size * 100;
     //var X = point.x - perspective.x;
-    var X = point.x - (perspective.x + ((1.3*(camera_level - 1))*100*Math.sin(T)));
+    var X = point.x - (perspective.x + ((camera_const*(camera_level - 1))*100*Math.sin(T)));
     X = pos_mod(X, mapSize);
     var Y = point.y - (perspective.y - (camera_level*100));
     Y = pos_mod_1(Y, mapSize);
-    var Z = point.z - (perspective.z - (1.3*(camera_level - 1))*100*Math.cos(T));
+    var Z = point.z - (perspective.z - (camera_const*(camera_level - 1))*100*Math.cos(T));
     Z = pos_mod(Z, mapSize);
     var point2 = {x: X, y: Y, z: Z};
     var point3 = mul_v_m(point2, rotation);
@@ -677,22 +678,16 @@ function give() {
             return(0);
         });
         cube_grid[C[0]][C1d][C[2]] = {val: bag[0], time: Now};
-        //update_near_cube(C[0],C1d,C[2],bag[0]);
-        //near_cubes = near_cubes.concat({x:C[0]*100,y:C1d*100,z:C[2]*100,color:bag[0]});
     }else if(Mid == 0) {
         variable_public_get(["add",C[0],C1m,C[2],bag[0]],function(x){
             return(0);
         });
         cube_grid[C[0]][C1m][C[2]] = {val: bag[0], time: Now};
-        //near_cubes = near_cubes.concat({x:C[0]*100,y:C1m*100,z:C[2]*100,color:bag[0]});
-        //update_near_cube(C[0],C1m,C[2],bag[0]);
     }else if(Up == 0) {
         variable_public_get(["add",C[0],C1u,C[2],bag[0]],function(x){
             return(0);
         });
         cube_grid[C[0]][C1u][C[2]] = {val: bag[0], time: Now};
-        //near_cubes = near_cubes.concat({x:C[0]*100,y:C1u*100,z:C[2]*100,color:bag[0]});
-        //update_near_cube(C[0],C1u,C[2],bag[0]);
     };
     bag = bag.slice(1);
 };
