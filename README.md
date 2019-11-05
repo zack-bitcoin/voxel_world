@@ -14,5 +14,5 @@ First install erlang.
 `sh attach.sh` to connect to it and issue commands
 `halt().` to turn it off, while connected.
 
-this is a link to play on the same computer: `http://0.0.0.0:8095/main.html`
+this is a link to play on the same computer: `http://0.0.0.0:8095/instructions.html`
 It will work if you have it running properly.

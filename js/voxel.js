@@ -4,10 +4,10 @@ c.height = document.body.clientHeight;
 
 var ctx = c.getContext("2d");
 var world_size;
-var vision = 900;
+var vision = 1200;
 var physics_distance = 1200;
 
-var fps = 6;
+var fps = 8;
 var time = 0;
 var colors = [
     "#000000",//black
@@ -87,7 +87,12 @@ function three_to_two(a) {
     return {x: X, y: Y};
 };
 function visible(Z) {
-    return ((Z.z > 0) && (Z.z < vision) && (Z.x > -(vision/2)) && (Z.x < (vision/2)));
+    //var ZL = 0;
+    //var T = perspective.theta;
+    //var ZL = camera_level*100;
+    //return ((Z.z > ZL) && (Z.z < vision) && (Z.x > -(vision/2)) && (Z.x < (vision/2)));
+    return((Z.z > 0));
+    //return(true);
 };
 function pdb_maker() {
     var db = {type: "points"};
@@ -143,11 +148,11 @@ function in_perspective(point, rotation) {
     var T = perspective.theta;
     var mapSize = world_size * 100;
     //var X = point.x - perspective.x;
-    var X = point.x - (perspective.x + (100*Math.sin(T)));
+    var X = point.x - (perspective.x + (camera_level*100*Math.sin(T)));
     X = pos_mod(X, mapSize);
-    var Y = point.y - (perspective.y - 100);
+    var Y = point.y - (perspective.y - (camera_level*100));
     Y = pos_mod_1(Y, mapSize);
-    var Z = point.z - (perspective.z - (100*Math.cos(T)));
+    var Z = point.z - (perspective.z - (camera_level*100*Math.cos(T)));
     Z = pos_mod(Z, mapSize);
     var point2 = {x: X, y: Y, z: Z};
     var point3 = mul_v_m(point2, rotation);
@@ -284,14 +289,20 @@ function surrounded(X,Y,Z,W) {
     return(true);
 };
 
-function grid_to_points2(W, X, Y, L, F) {
-    if(X == W.length){
+function grid_to_points2(W, X, XU, Y, YL, YU, ZL, ZU, L, F) {
+    if(X == XU){
+        //console.log("new volume");
         return(F(L));
     };
-    if(Y == W.length){
-        return(grid_to_points2(W, X+1, 0, L, F));
+    if(Y == YU){
+        //console.log("new row");
+        setTimeout(function(){//this is a time consuming function, so we break it into chunks and run it in the background
+            X = pos_mod_1(X+1, world_size);
+            return(grid_to_points2(W, X, XU, YL, YL, YU, ZL, ZU, L, F));
+        });
+        return(0); 
     };
-    for(var z=0;z<W.length;z++){
+    for(var z=ZL;(!(z==ZU));){
         var g = W[X][Y][z].val;
         if(g == 0){
         } else if(surrounded(X,Y,z,W)){
@@ -301,18 +312,20 @@ function grid_to_points2(W, X, Y, L, F) {
                            z: z*100,
                            color: colors[g]}]);
         };
+        z = pos_mod_1(z+1, world_size);
     };
-    if((Y % Math.round(W.length/3)) == 0){
-        setTimeout(function(){//this is a time consuming function, so we break it into chunks and run it in the background
-            return(grid_to_points2(W, X, Y+1, L, F));
-        }, 0);
-    } else{
-        return(grid_to_points2(W, X, Y+1, L, F));
-    };
+//    if((Y % Math.round(W.length/3)) == 0){
+//        setTimeout(function(){//this is a time consuming function, so we break it into chunks and run it in the background
+//            return(grid_to_points2(W, X, Y+1, L, F));
+//        }, 0);
+    //    } else{
+    Y = pos_mod_1(Y+1, world_size);
+    return(grid_to_points2(W, X, XU, Y, YL, YU, ZL, ZU, L, F));
+//    };
 };
 function update_near_cube(X,Y,Z,V){
     //var nc2 = JSON.parse(JSON.stringify(near_cubes));
-    console.log("update near cube start");
+    //console.log("update near cube start");
     for(var i=0;i<near_cubes.length;i++){
         var a = near_cubes[i];
         
@@ -348,16 +361,26 @@ function main(){
     var pdb = pdb_maker();
     var triangles = [];
     function art_cron(){
-        movement([13,16,37,38,39,40,65,83]);
+        movement([13,16,37,38,39,40,65,83,67]);
         var pdb2 = pdb.perspective();
         draw_helper(pdb2, triangles);
         setTimeout(art_cron, 1000/fps);
     };
     function near_cubes_cron(){
-        grid_to_points2(cube_grid,0,0,[],function(cps){
-            near_cubes = cps.filter(function(p){
-                return(distance(p,perspective)<physics_distance);
-            });
+        //var p = perspective;
+        var c = cursor();
+        var v = Math.round(physics_distance/100);
+        var X0 = pos_mod_1(c[0] - v, world_size);
+        var X1 = pos_mod_1(c[0] + v, world_size);
+        var Y0 = pos_mod_1(c[1] - v, world_size);
+        var Y1 = pos_mod_1(c[1] + v, world_size);
+        var Z0 = pos_mod_1(c[2] - v, world_size);
+        var Z1 = pos_mod_1(c[2] + v, world_size);
+        grid_to_points2(cube_grid,X0,X1,Y0,Y0,Y1,Z0,Z1,[],function(cps){
+            near_cubes = cps;
+            //near_cubes = cps.filter(function(p){
+            //    return(distance(p,perspective)<physics_distance);
+            //});
             physics_cron();
             setTimeout(near_cubes_cron, 200);
         });
@@ -480,7 +503,9 @@ var controls = {
     39:false,
     40:false,
     65:false,
-    83:false};
+    83:false,
+    67:false,
+};
 var perspective = {x:50,y:150,z:50,theta:0};
 var bag = [];
 
@@ -641,10 +666,12 @@ function eat() {
     var C1d = pos_mod_1(C[1]+1, world_size);
     var C1m = pos_mod_1(C[1],world_size);
     var C1u = pos_mod_1((C[1]-1), world_size);
+    var C1h = pos_mod_1((C[1]-2), world_size);
 
     var Mid = cube_grid[C[0]][C1m][C[2]].val;
     var Up = cube_grid[C[0]][C1u][C[2]].val;
     var Down = cube_grid[C[0]][C1d][C[2]].val;
+    var Highest = cube_grid[C[0]][C1h][C[2]].val;
 
     var time = new Date;
     var Now = time.getTime();
@@ -675,9 +702,24 @@ function eat() {
             bag = ([Down]).concat(bag);
         }
         cube_grid[C[0]][C1d][C[2]] = {val: 0, time: Now};
-        //update_near_cube(C[0],C1d,C[2], 0);
+    }else if(!(Highest == 0)) {
+        variable_public_get(["take",C[0],C1h,C[2]],function(x){
+            return(0);
+        });
+        if(typeof(Down) == "number"){
+            bag = ([Down]).concat(bag);
+        }
+        cube_grid[C[0]][C1h][C[2]] = {val: 0, time: Now};
     }
     //bag is a stack 
+};
+var camera_level = 1;
+function camera(){
+    if(camera_level == 5){
+        camera_level = 1;
+    }else{
+        camera_level += 1;
+    };
 };
 
 var keys = {};
@@ -689,6 +731,7 @@ keys[39] = right;
 keys[40] = down;
 keys[65] = step_left;
 keys[83] = step_right;
+keys[67] = camera;//c key for camera
 document.addEventListener('keydown', function(event) {
     var k = event.keyCode;
     //console.log(k);

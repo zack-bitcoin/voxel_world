@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 -export([start_link/0,code_change/3,handle_call/3,handle_cast/2,handle_info/2,init/1,terminate/2,
          add/4,delete/3,new/0,compress/0,read/0]).
--define(SIZE, 30).
+-define(SIZE, 100).
 -record(db, {raw, %the world in editable tuple format.
              compressed}).%the world in javascript compatible base64 format.
 

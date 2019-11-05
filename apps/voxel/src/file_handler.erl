@@ -14,6 +14,7 @@ handle(Req, State) ->
             <<"/server.js">> -> F0;
             <<"/rpc.js">> -> F0;
             <<"/main.html">> -> F0;
+            <<"/instructions.html">> -> F0;
             <<"/favicon.ico">> -> F0;
             X -> 
                 io:fwrite("ext file handler block access to: "),
