@@ -150,11 +150,11 @@ function in_perspective(point, rotation) {
     var T = perspective.theta;
     var mapSize = world_size * 100;
     //var X = point.x - perspective.x;
-    var X = point.x - (perspective.x + (camera_level*100*Math.sin(T)));
+    var X = point.x - (perspective.x + ((1.3*(camera_level - 1))*100*Math.sin(T)));
     X = pos_mod(X, mapSize);
     var Y = point.y - (perspective.y - (camera_level*100));
     Y = pos_mod_1(Y, mapSize);
-    var Z = point.z - (perspective.z - (camera_level*100*Math.cos(T)));
+    var Z = point.z - (perspective.z - (1.3*(camera_level - 1))*100*Math.cos(T));
     Z = pos_mod(Z, mapSize);
     var point2 = {x: X, y: Y, z: Z};
     var point3 = mul_v_m(point2, rotation);
