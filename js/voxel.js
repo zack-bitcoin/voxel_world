@@ -193,7 +193,37 @@ function mul_m_m(m1, m2) {
         cs.map(function(x){return(
             mul_v_v(v2p(m1[n]), x))}))}));
 };
+function avatar_triangles(p, s, pdb) {
+    var mapSize = world_size * 100;
 
+    var T = perspective.theta;
+    var S = Math.sin(T);
+    var C = Math.cos(T);
+
+    var h = Math.round(s/2);
+    var x = pos_mod(p.x, mapSize);
+    var y = pos_mod_1(p.y-50, mapSize);
+    var z = pos_mod(p.z, mapSize);
+    var Nose = {x: x - (S*h), y: y, z: z + (C*h)};
+    var Bottom = {x: x + (S*h), y: y+h, z: z - (C*h)};
+    var Top = {x: x + (S*h), y: y-h, z: z - (C*h)};
+    var Left = {x: x + (S*h) - (C*h), y: y, z: z - (C*h) - (S*h)};
+    var Right = {x: x + (S*h) + (C*h), y: y, z: z - (C*h) + (S*h)};
+    var L = [Nose, Bottom, Left, Top, Right];
+    var L2 = L.map(function(p){return(pdb.add_point(p));});
+    var nose = L2[0];
+    var bottom = L2[1];
+    var left = L2[2];
+    var top = L2[3];
+    var right = L2[4];
+    var Triangles =
+        [[nose, top, bottom, colors[0]],
+         [nose, bottom, top, colors[0]],
+         [nose, right, left, colors[0]],
+         [nose, left, right, colors[0]],
+        ];
+    return(Triangles); 
+};
 function cube_points(p, s, pdb) {
     var X = p.x;
     var Y = p.y;
@@ -392,11 +422,15 @@ function main(){
         //var near_cubes = cps.filter(function(p){
         //return(distance(p,perspective)<physics_distance);
     //});
-            var pdb2 = pdb_maker();
-            var faces = near_cubes.reduce(function(a, x){return(cp2faces(cube_points(x, 100, pdb2)).concat(a))}, []);
-            var triangles2 = faces.reduce(function(a,x){return(a.concat(face2triangles(x,pdb2)));}, []);
-            pdb = pdb2;
-            triangles = triangles2;
+        var pdb2 = pdb_maker();
+        var faces = near_cubes.reduce(function(a, x){return(cp2faces(cube_points(x, 100, pdb2)).concat(a))}, []);
+        var triangles2 = faces.reduce(function(a,x){return(a.concat(face2triangles(x,pdb2)));}, []);
+        //console.log(JSON.stringify(triangles2[0]));
+        //triangles2 = [triangles2[0]];
+        triangles2 = triangles2.concat(avatar_triangles(perspective, 100, pdb2));
+
+        pdb = pdb2;
+        triangles = triangles2;
         //setTimeout(physics_cron, 30);
     //});
     };
@@ -715,10 +749,10 @@ function eat() {
     }
     //bag is a stack 
 };
-var camera_level = 1;
+var camera_level = 2;
 function camera(){
     if(camera_level == 7){
-        camera_level = 1;
+        camera_level = 2;
     }else{
         camera_level += 1;
     };
