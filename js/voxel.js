@@ -36,9 +36,11 @@ function draw_triangle(p1, p2, p3, color) {
     var b = clockwise(p1, p2, p3);
     if (b) {
         ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
+        ctx.moveTo(p2.x, p2.y);
         ctx.lineTo(p3.x, p3.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
         ctx.fillStyle = color;
         ctx.fill();
     };
@@ -715,7 +717,7 @@ function eat() {
 };
 var camera_level = 1;
 function camera(){
-    if(camera_level == 5){
+    if(camera_level == 7){
         camera_level = 1;
     }else{
         camera_level += 1;

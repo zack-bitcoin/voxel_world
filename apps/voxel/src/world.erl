@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 -export([start_link/0,code_change/3,handle_call/3,handle_cast/2,handle_info/2,init/1,terminate/2,
          add/4,delete/3,new/0,compress/0,read/0]).
--define(SIZE, 100).
+-define(SIZE, 108).
 -record(db, {raw, %the world in editable tuple format.
              compressed}).%the world in javascript compatible base64 format.
 
@@ -42,14 +42,13 @@ new_line(E, LN, FN, W, S) ->
     new_line(E+1, LN, FN, [NE|W], S).
 new_element(X, Y, Z, S) ->
     if
-        ((Y>0) and (Y<(S-5))) ->
-        %((Y<95) and (Y>50)) ->
-        %    1 + 
-        %        (((X div 6) +
-        %              (Y div 6) +
-        %              (Z div 6)) rem 9);
-
-        1+((X+Z+Y) rem 8);
+        ((Y>(S div 3)) and (Y<(S-5))) ->
+            1 + 
+                (((X div 6) +
+                      (Y div 6) +
+                      (Z div 6) +
+                      (4*((X+Y+Z) rem 2))
+                 ) rem 8);
         true -> 0
     end.
 
