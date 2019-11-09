@@ -7,7 +7,7 @@ var world_size;
 var vision = 1200;
 var physics_distance = 1200;
 
-var fps = 8;
+var fps = 30;
 var time = 0;
 var colors = [
     "#000000",//black
@@ -330,11 +330,11 @@ function grid_to_points2(W, X, XU, Y, YL, YU, ZL, ZU, L, F) {
     };
     if(Y == YU){
         //console.log("new row");
-        setTimeout(function(){//this is a time consuming function, so we break it into chunks and run it in the background
+ //       setTimeout(function(){//this is a time consuming function, so we break it into chunks and run it in the background
             X = pos_mod_1(X+1, world_size);
             return(grid_to_points2(W, X, XU, YL, YL, YU, ZL, ZU, L, F));
-        });
-        return(0); 
+//        }, 0);
+//        return(0); 
     };
     for(var z=ZL;(!(z==ZU));){
         var g = W[X][Y][z].val;
@@ -389,7 +389,7 @@ function update_near_cube(X,Y,Z,V){
     };
 };
 var near_cubes = [];
-    
+
 function main(){
     var round = 0;
     var pdb = pdb_maker();
@@ -399,6 +399,7 @@ function main(){
         var pdb2 = pdb.perspective();
         draw_helper(pdb2, triangles);
         setTimeout(art_cron, 1000/fps);
+        //setTimeout(art_cron, 0);
     };
     function near_cubes_cron(){
         //var p = perspective;
@@ -412,32 +413,18 @@ function main(){
         var Z1 = pos_mod_1(c[2] + v, world_size);
         grid_to_points2(cube_grid,X0,X1,Y0,Y0,Y1,Z0,Z1,[],function(cps){
             near_cubes = cps;
-            //near_cubes = cps.filter(function(p){
-            //    return(distance(p,perspective)<physics_distance);
-            //});
-            physics_cron();
-            setTimeout(near_cubes_cron, 200);
+            var pdb2 = pdb_maker();
+            var faces = near_cubes.reduce(function(a, x){return(cp2faces(cube_points(x, 100, pdb2)).concat(a))}, []);
+            var triangles2 = faces.reduce(function(a,x){return(a.concat(face2triangles(x,pdb2)));}, []);
+            triangles2 = triangles2.concat(avatar_triangles(perspective, 100, pdb2));
+
+            pdb = pdb2;
+            triangles = triangles2;
+            
+            setTimeout(near_cubes_cron, 100);
         });
     };
-    function physics_cron(){
-        //grid_to_points2(cube_grid,0,0,[],function(cps){
-        //var near_cubes = cps.filter(function(p){
-        //return(distance(p,perspective)<physics_distance);
-    //});
-        var pdb2 = pdb_maker();
-        var faces = near_cubes.reduce(function(a, x){return(cp2faces(cube_points(x, 100, pdb2)).concat(a))}, []);
-        var triangles2 = faces.reduce(function(a,x){return(a.concat(face2triangles(x,pdb2)));}, []);
-        //console.log(JSON.stringify(triangles2[0]));
-        //triangles2 = [triangles2[0]];
-        triangles2 = triangles2.concat(avatar_triangles(perspective, 100, pdb2));
-
-        pdb = pdb2;
-        triangles = triangles2;
-        //setTimeout(physics_cron, 30);
-    //});
-    };
     near_cubes_cron();
-    //physics_cron();
     art_cron();
     gravity();
 };
